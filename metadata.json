@@ -1,0 +1,7 @@
+{
+  "name": "MarketFlow - Digital Marketplace",
+  "description": "A comprehensive digital marketplace platform for creators, buyers, and administrators, featuring seller onboarding, product management, sales analytics, and secure downloads.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
