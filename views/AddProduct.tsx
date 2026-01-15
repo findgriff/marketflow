@@ -1,6 +1,5 @@
 
 import React, { useState, useRef } from 'react';
-import { GoogleGenAI } from "@google/genai";
 
 const AddProduct: React.FC = () => {
   const [title, setTitle] = useState('');
@@ -18,15 +17,20 @@ const AddProduct: React.FC = () => {
     if (!title) return;
     setIsGenerating(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `Generate a compelling, professional marketplace description for a digital product titled "${title}" in the category "${category}".`,
-        config: {
-          systemInstruction: "You are an expert copywriter for digital marketplaces. Keep the description concise but persuasive (max 100 words).",
-        }
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: `Generate a compelling, professional marketplace description (max 100 words) for a digital product titled "${title}" in the category "${category}".`,
+          system: "You are an expert copywriter for digital marketplaces. Keep it concise but persuasive.",
+        }),
       });
-      setDescription(response.text || '');
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || 'Failed to generate description');
+      }
+      const data = await res.json() as { reply?: string };
+      setDescription(data.reply || '');
     } catch (err) {
       console.error('AI Generation error:', err);
     } finally {

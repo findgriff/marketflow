@@ -1,6 +1,5 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { GoogleGenAI, GenerateContentResponse, Chat } from "@google/genai";
 
 interface Message {
   role: 'user' | 'model';
@@ -15,20 +14,6 @@ const SalesBot: React.FC = () => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const chatRef = useRef<Chat | null>(null);
-
-  // Initialize Chat Session
-  useEffect(() => {
-    if (!chatRef.current) {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      chatRef.current = ai.chats.create({
-        model: 'gemini-3-pro-preview',
-        config: {
-          systemInstruction: "You are MarketFlow's AI Sales Assistant. Your goal is to help users navigate the marketplace, understand seller benefits, and answer administrative questions. You should be professional, encouraging, and knowledgeable about digital assets like UI Kits, Software, and Guides. If a user asks about selling, mention our competitive 10% platform fee. Keep responses concise and use markdown for formatting if needed.",
-        },
-      });
-    }
-  }, []);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -47,14 +32,24 @@ const SalesBot: React.FC = () => {
     setIsLoading(true);
 
     try {
-      if (chatRef.current) {
-        const response: GenerateContentResponse = await chatRef.current.sendMessage({ message: userText });
-        const modelText = response.text || "I'm sorry, I couldn't process that request.";
-        setMessages(prev => [...prev, { role: 'model', text: modelText }]);
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: userText,
+          system: "You are MarketFlow's AI Sales Assistant. Help users navigate the marketplace, explain seller benefits (10% platform fee), and assist admins. Be concise and friendly.",
+        }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || 'Request failed');
       }
+      const data = await res.json() as { reply?: string };
+      const modelText = data.reply || "I'm sorry, I couldn't process that request.";
+      setMessages(prev => [...prev, { role: 'model', text: modelText }]);
     } catch (error) {
-      console.error("Gemini Error:", error);
-      setMessages(prev => [...prev, { role: 'model', text: "I encountered an error connecting to the brain. Please try again in a moment." }]);
+      console.error("AI Error:", error);
+      setMessages(prev => [...prev, { role: 'model', text: "I encountered an error. Please try again in a moment." }]);
     } finally {
       setIsLoading(false);
     }
